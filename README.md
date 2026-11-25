@@ -75,7 +75,7 @@ curl http://localhost:8080/transactions/sum/11
 
 ## Errors
 
-Failed requests use the same JSON shape:
+Failed requests use this JSON shape. `message` is only present for the cases in the table. A body that cannot be parsed, such as malformed JSON, is still `400` and has no `message`. A client should not require `message`: use it when it is present, and `error` when it is not.
 
 ```json
 {
