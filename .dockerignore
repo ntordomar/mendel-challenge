@@ -1,0 +1,9 @@
+target
+.git
+.idea
+.vscode
+scripts
+*.pdf
+*.md
+*.iml
+.DS_Store
