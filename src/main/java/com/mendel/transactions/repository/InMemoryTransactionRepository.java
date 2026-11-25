@@ -65,6 +65,21 @@ public class InMemoryTransactionRepository implements TransactionRepository {
         return List.copyOf(subtree);
     }
 
+    @Override
+    public List<Transaction> findWithAncestors(long id) {
+        Transaction current = transactionsById.get(id);
+        if (current == null) {
+            return List.of();
+        }
+        List<Transaction> ancestors = new ArrayList<>();
+        while (current != null) {
+            ancestors.add(current);
+            Long parentId = current.parentId();
+            current = parentId == null ? null : transactionsById.get(parentId);
+        }
+        return List.copyOf(ancestors);
+    }
+
     private <K> void addToIndex(Map<K, Set<Long>> index, K key, long id) {
         index.computeIfAbsent(key, ignored -> new HashSet<>()).add(id);
     }

@@ -88,6 +88,34 @@ class InMemoryTransactionRepositoryTest {
     }
 
     @Test
+    void findWithAncestorsReturnsEmptyWhenTransactionDoesNotExist() {
+        assertThat(repository.findWithAncestors(99L)).isEmpty();
+    }
+
+    @Test
+    void findWithAncestorsReturnsTheTransactionWhenItHasNoParent() {
+        Transaction transaction = transaction(10L, "5000", "cars", null);
+        repository.save(transaction);
+
+        assertThat(repository.findWithAncestors(10L)).containsExactly(transaction);
+    }
+
+    @Test
+    void findWithAncestorsWalksParentsUpToTheRoot() {
+        Transaction root = transaction(10L, "5000", "cars", null);
+        Transaction child = transaction(11L, "10000", "shopping", 10L);
+        Transaction grandchild = transaction(12L, "5000", "shopping", 11L);
+        Transaction otherChild = transaction(13L, "1000", "food", 10L);
+        repository.save(root);
+        repository.save(child);
+        repository.save(grandchild);
+        repository.save(otherChild);
+
+        assertThat(repository.findWithAncestors(12L)).containsExactly(grandchild, child, root);
+        assertThat(repository.findWithAncestors(13L)).containsExactly(otherChild, root);
+    }
+
+    @Test
     void replacingTransactionUpdatesItsData() {
         repository.save(transaction(10L, "5000", "cars", null));
         Transaction replacement = transaction(10L, "7000", "cars", null);

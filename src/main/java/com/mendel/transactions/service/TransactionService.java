@@ -47,16 +47,20 @@ public class TransactionService {
     }
 
     private void rejectCyclesAndMissingParents(Transaction transaction) {
-        Long ancestorId = transaction.parentId();
-        while (ancestorId != null) {
-            if (ancestorId == transaction.id()) {
-                throw new CircularTransactionException(transaction.id());
-            }
-            Transaction ancestor = repository.findById(ancestorId).orElse(null);
-            if (ancestor == null) {
-                throw new ParentTransactionNotFoundException(transaction.parentId());
-            }
-            ancestorId = ancestor.parentId();
+        Long parentId = transaction.parentId();
+        if (parentId == null) {
+            return;
+        }
+        if (parentId == transaction.id()) {
+            throw new CircularTransactionException(transaction.id());
+        }
+        List<Transaction> ancestors = repository.findWithAncestors(parentId);
+        if (ancestors.isEmpty()) {
+            throw new ParentTransactionNotFoundException(parentId);
+        }
+        boolean cycle = ancestors.stream().anyMatch(ancestor -> ancestor.id() == transaction.id());
+        if (cycle) {
+            throw new CircularTransactionException(transaction.id());
         }
     }
 }
