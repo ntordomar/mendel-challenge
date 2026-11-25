@@ -60,21 +60,31 @@ class InMemoryTransactionRepositoryTest {
     }
 
     @Test
-    void findsDirectChildrenIds() {
-        repository.save(transaction(10L, "5000", "cars", null));
-        repository.save(transaction(11L, "10000", "shopping", 10L));
-        repository.save(transaction(12L, "5000", "shopping", 10L));
-        repository.save(transaction(13L, "1000", "food", 11L));
-
-        assertThat(repository.findChildrenIds(10L)).containsExactlyInAnyOrder(11L, 12L);
-        assertThat(repository.findChildrenIds(11L)).containsExactly(13L);
+    void findWithDescendantsReturnsEmptyWhenTransactionDoesNotExist() {
+        assertThat(repository.findWithDescendants(99L)).isEmpty();
     }
 
     @Test
-    void returnsNoChildrenIdsForTransactionWithoutChildren() {
-        repository.save(transaction(10L, "5000", "cars", null));
+    void findWithDescendantsReturnsTheTransactionWhenItHasNoDescendants() {
+        Transaction transaction = transaction(10L, "5000", "cars", null);
+        repository.save(transaction);
 
-        assertThat(repository.findChildrenIds(10L)).isEmpty();
+        assertThat(repository.findWithDescendants(10L)).containsExactly(transaction);
+    }
+
+    @Test
+    void findWithDescendantsReturnsTheTransactionAndEveryDescendant() {
+        Transaction root = transaction(10L, "5000", "cars", null);
+        Transaction child = transaction(11L, "10000", "shopping", 10L);
+        Transaction grandchild = transaction(12L, "5000", "shopping", 11L);
+        Transaction otherChild = transaction(13L, "1000", "food", 10L);
+        repository.save(root);
+        repository.save(child);
+        repository.save(grandchild);
+        repository.save(otherChild);
+
+        assertThat(repository.findWithDescendants(10L)).containsExactlyInAnyOrder(root, child, grandchild, otherChild);
+        assertThat(repository.findWithDescendants(11L)).containsExactlyInAnyOrder(child, grandchild);
     }
 
     @Test
@@ -99,25 +109,29 @@ class InMemoryTransactionRepositoryTest {
     }
 
     @Test
-    void replacingTransactionWithNewParentMovesItToThatParent() {
-        repository.save(transaction(1L, "100", "cars", null));
-        repository.save(transaction(2L, "100", "cars", null));
+    void replacingTransactionWithNewParentMovesItsDescendants() {
+        Transaction firstParent = transaction(1L, "100", "cars", null);
+        Transaction secondParent = transaction(2L, "100", "cars", null);
+        repository.save(firstParent);
+        repository.save(secondParent);
         repository.save(transaction(10L, "5000", "cars", 1L));
 
-        repository.save(transaction(10L, "5000", "cars", 2L));
+        Transaction moved = transaction(10L, "5000", "cars", 2L);
+        repository.save(moved);
 
-        assertThat(repository.findChildrenIds(1L)).isEmpty();
-        assertThat(repository.findChildrenIds(2L)).containsExactly(10L);
+        assertThat(repository.findWithDescendants(1L)).containsExactly(firstParent);
+        assertThat(repository.findWithDescendants(2L)).containsExactlyInAnyOrder(secondParent, moved);
     }
 
     @Test
-    void replacingTransactionWithoutParentRemovesItFromPreviousParent() {
-        repository.save(transaction(1L, "100", "cars", null));
+    void replacingTransactionWithoutParentDetachesItFromPreviousParent() {
+        Transaction parent = transaction(1L, "100", "cars", null);
+        repository.save(parent);
         repository.save(transaction(10L, "5000", "cars", 1L));
 
         repository.save(transaction(10L, "5000", "cars", null));
 
-        assertThat(repository.findChildrenIds(1L)).isEmpty();
+        assertThat(repository.findWithDescendants(1L)).containsExactly(parent);
     }
 
     private static Transaction transaction(long id, String amount, String type, Long parentId) {

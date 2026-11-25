@@ -25,7 +25,7 @@ public class InMemoryTransactionRepository implements TransactionRepository {
     }
 
     @Override
-    public List<Long> findChildrenIds(long parentId) {
+    public List<Transaction> findWithDescendants(long id) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 }

@@ -22,7 +22,9 @@ public interface TransactionRepository {
     List<Long> findIdsByType(String type);
 
     /**
-     * @return the ids of the direct children of the given transaction, or an empty list if there are none
+     * Returns the transaction with the given id plus every descendant, read atomically.
+     *
+     * @return those transactions, or an empty list if no transaction has that id
      */
-    List<Long> findChildrenIds(long parentId);
+    List<Transaction> findWithDescendants(long id);
 }
