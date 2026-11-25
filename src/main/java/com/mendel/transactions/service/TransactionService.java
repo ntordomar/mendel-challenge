@@ -9,33 +9,41 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Service
 public class TransactionService {
 
     private final TransactionRepository repository;
-    private final Object lock = new Object();
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
     public TransactionService(TransactionRepository repository) {
         this.repository = repository;
     }
 
     public SaveResult save(Transaction transaction) {
-        synchronized (lock) {
+        lock.writeLock().lock();
+        try {
             rejectCyclesAndMissingParents(transaction);
             boolean created = repository.save(transaction).isEmpty();
             return created ? SaveResult.CREATED : SaveResult.UPDATED;
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
     public List<Long> findIdsByType(String type) {
-        synchronized (lock) {
+        lock.readLock().lock();
+        try {
             return repository.findIdsByType(type);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
     public BigDecimal sumWithDescendants(long id) {
-        synchronized (lock) {
+        lock.readLock().lock();
+        try {
             List<Transaction> subtree = repository.findWithDescendants(id);
             if (subtree.isEmpty()) {
                 throw new TransactionNotFoundException(id);
@@ -43,6 +51,8 @@ public class TransactionService {
             return subtree.stream()
                     .map(Transaction::amount)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
