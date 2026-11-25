@@ -40,7 +40,7 @@ class TransactionServiceTest {
 
         service.save(transaction(10L, "7000", "cars", null));
 
-        assertThat(service.sum(10L)).isEqualByComparingTo("7000");
+        assertThat(service.sumWithDescendants(10L)).isEqualByComparingTo("7000");
     }
 
     @Test
@@ -58,8 +58,8 @@ class TransactionServiceTest {
 
         service.save(transaction(11L, "10000", "shopping", null));
 
-        assertThat(service.sum(10L)).isEqualByComparingTo("5000");
-        assertThat(service.sum(11L)).isEqualByComparingTo("15000");
+        assertThat(service.sumWithDescendants(10L)).isEqualByComparingTo("5000");
+        assertThat(service.sumWithDescendants(11L)).isEqualByComparingTo("15000");
     }
 
     @Test
@@ -73,7 +73,7 @@ class TransactionServiceTest {
         assertThatThrownBy(() -> service.save(transaction(11L, "10000", "shopping", 99L)))
                 .isInstanceOf(ParentTransactionNotFoundException.class);
 
-        assertThatThrownBy(() -> service.sum(11L)).isInstanceOf(TransactionNotFoundException.class);
+        assertThatThrownBy(() -> service.sumWithDescendants(11L)).isInstanceOf(TransactionNotFoundException.class);
     }
 
     @Test
@@ -89,7 +89,7 @@ class TransactionServiceTest {
 
         assertThatThrownBy(() -> service.save(transaction(10L, "5000", "cars", 11L)))
                 .isInstanceOf(CircularTransactionException.class);
-        assertThat(service.sum(10L)).isEqualByComparingTo("15000");
+        assertThat(service.sumWithDescendants(10L)).isEqualByComparingTo("15000");
     }
 
     @Test
@@ -100,7 +100,7 @@ class TransactionServiceTest {
 
         assertThatThrownBy(() -> service.save(transaction(10L, "5000", "cars", 12L)))
                 .isInstanceOf(CircularTransactionException.class);
-        assertThat(service.sum(10L)).isEqualByComparingTo("20000");
+        assertThat(service.sumWithDescendants(10L)).isEqualByComparingTo("20000");
     }
 
     @Test
@@ -109,9 +109,9 @@ class TransactionServiceTest {
         service.save(transaction(11L, "10000", "shopping", 10L));
         service.save(transaction(12L, "5000", "shopping", 11L));
 
-        assertThat(service.sum(10L)).isEqualByComparingTo("20000");
-        assertThat(service.sum(11L)).isEqualByComparingTo("15000");
-        assertThat(service.sum(12L)).isEqualByComparingTo("5000");
+        assertThat(service.sumWithDescendants(10L)).isEqualByComparingTo("20000");
+        assertThat(service.sumWithDescendants(11L)).isEqualByComparingTo("15000");
+        assertThat(service.sumWithDescendants(12L)).isEqualByComparingTo("5000");
     }
 
     @Test
@@ -121,14 +121,14 @@ class TransactionServiceTest {
         service.save(transaction(12L, "3000", "shopping", 10L));
         service.save(transaction(13L, "1000", "food", 11L));
 
-        assertThat(service.sum(10L)).isEqualByComparingTo("19000");
-        assertThat(service.sum(11L)).isEqualByComparingTo("11000");
-        assertThat(service.sum(12L)).isEqualByComparingTo("3000");
+        assertThat(service.sumWithDescendants(10L)).isEqualByComparingTo("19000");
+        assertThat(service.sumWithDescendants(11L)).isEqualByComparingTo("11000");
+        assertThat(service.sumWithDescendants(12L)).isEqualByComparingTo("3000");
     }
 
     @Test
     void sumOfUnknownTransactionThrows() {
-        assertThatThrownBy(() -> service.sum(99L)).isInstanceOf(TransactionNotFoundException.class);
+        assertThatThrownBy(() -> service.sumWithDescendants(99L)).isInstanceOf(TransactionNotFoundException.class);
     }
 
     @Test
