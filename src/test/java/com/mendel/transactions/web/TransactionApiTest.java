@@ -89,17 +89,29 @@ class TransactionApiTest {
 
     @Test
     void sumOfAnUnknownTransactionIsNotFound() throws Exception {
-        mockMvc.perform(get("/transactions/sum/10"))
-                .andExpect(status().isNotFound());
+        expectError(
+                mockMvc.perform(get("/transactions/sum/10")),
+                404,
+                "Not Found",
+                "/transactions/sum/10",
+                "Transaction not found: 10");
     }
 
     @Test
-    void missingParentIsNotFoundAndIsNotStored() throws Exception {
-        putTransaction(11, "{\"amount\": 10000, \"type\": \"shopping\", \"parent_id\": 99}")
-                .andExpect(status().isNotFound());
+    void missingParentIsRejectedAndIsNotStored() throws Exception {
+        expectError(
+                putTransaction(11, "{\"amount\": 10000, \"type\": \"shopping\", \"parent_id\": 99}"),
+                422,
+                "Unprocessable Content",
+                "/transactions/11",
+                "Parent transaction not found: 99");
 
-        mockMvc.perform(get("/transactions/sum/11"))
-                .andExpect(status().isNotFound());
+        expectError(
+                mockMvc.perform(get("/transactions/sum/11")),
+                404,
+                "Not Found",
+                "/transactions/sum/11",
+                "Transaction not found: 11");
     }
 
     @Test
@@ -107,8 +119,12 @@ class TransactionApiTest {
         putTransaction(10, "{\"amount\": 5000, \"type\": \"cars\"}");
         putTransaction(11, "{\"amount\": 10000, \"type\": \"shopping\", \"parent_id\": 10}");
 
-        putTransaction(10, "{\"amount\": 5000, \"type\": \"cars\", \"parent_id\": 11}")
-                .andExpect(status().isUnprocessableContent());
+        expectError(
+                putTransaction(10, "{\"amount\": 5000, \"type\": \"cars\", \"parent_id\": 11}"),
+                422,
+                "Unprocessable Content",
+                "/transactions/10",
+                "Transaction 10 would create a cycle");
 
         mockMvc.perform(get("/transactions/sum/10"))
                 .andExpect(jsonPath("$.sum").value(15000));
@@ -116,23 +132,49 @@ class TransactionApiTest {
 
     @Test
     void missingAmountIsRejected() throws Exception {
-        putTransaction(10, "{\"type\": \"cars\"}")
-                .andExpect(status().isBadRequest());
+        expectError(
+                putTransaction(10, "{\"type\": \"cars\"}"),
+                400,
+                "Bad Request",
+                "/transactions/10",
+                "amount must not be null");
 
-        mockMvc.perform(get("/transactions/sum/10"))
-                .andExpect(status().isNotFound());
+        expectError(
+                mockMvc.perform(get("/transactions/sum/10")),
+                404,
+                "Not Found",
+                "/transactions/sum/10",
+                "Transaction not found: 10");
     }
 
     @Test
     void missingTypeIsRejected() throws Exception {
-        putTransaction(10, "{\"amount\": 5000}")
-                .andExpect(status().isBadRequest());
+        expectError(
+                putTransaction(10, "{\"amount\": 5000}"),
+                400,
+                "Bad Request",
+                "/transactions/10",
+                "type must not be blank");
     }
 
     @Test
     void blankTypeIsRejected() throws Exception {
-        putTransaction(10, "{\"amount\": 5000, \"type\": \" \"}")
-                .andExpect(status().isBadRequest());
+        expectError(
+                putTransaction(10, "{\"amount\": 5000, \"type\": \" \"}"),
+                400,
+                "Bad Request",
+                "/transactions/10",
+                "type must not be blank");
+    }
+
+    private void expectError(ResultActions actions, int status, String error, String path, String message)
+            throws Exception {
+        actions.andExpect(status().is(status))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.status").value(status))
+                .andExpect(jsonPath("$.error").value(error))
+                .andExpect(jsonPath("$.path").value(path))
+                .andExpect(jsonPath("$.message").value(message));
     }
 
     private ResultActions putTransaction(long id, String json) throws Exception {
