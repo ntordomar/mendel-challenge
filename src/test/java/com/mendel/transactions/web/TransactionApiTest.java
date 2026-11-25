@@ -9,6 +9,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
+import static org.hamcrest.Matchers.closeTo;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -85,6 +86,33 @@ class TransactionApiTest {
         mockMvc.perform(get("/transactions/types/cars"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", empty()));
+    }
+
+    @Test
+    void sumsDecimalAmountsFromTheRequest() throws Exception {
+        putTransaction(10, "{\"amount\": 0.1, \"type\": \"cars\"}").andExpect(status().isCreated());
+        putTransaction(11, "{\"amount\": 0.2, \"type\": \"cars\", \"parent_id\": 10}").andExpect(status().isCreated());
+
+        mockMvc.perform(get("/transactions/sum/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sum").value(closeTo(0.3, 0.000001)));
+    }
+
+    @Test
+    void selfParentIsRejectedAndIsNotStored() throws Exception {
+        expectError(
+                putTransaction(10, "{\"amount\": 5000, \"type\": \"cars\", \"parent_id\": 10}"),
+                422,
+                "Unprocessable Content",
+                "/transactions/10",
+                "Transaction 10 would create a cycle");
+
+        expectError(
+                mockMvc.perform(get("/transactions/sum/10")),
+                404,
+                "Not Found",
+                "/transactions/sum/10",
+                "Transaction not found: 10");
     }
 
     @Test
